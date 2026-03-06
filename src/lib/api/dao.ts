@@ -9,6 +9,7 @@ import type {
   DaoConfig,
   DaoDumpState,
   DaoSummary,
+  Member,
   MemberListResponse,
   ProposalConfig,
   ProposalListResponse,
@@ -202,10 +203,18 @@ async function fetchDaoActiveProposalCount(daoAddress: string): Promise<number> 
 // ── Voting / Members ─────────────────────────────────────────────────────────
 
 /** Fetch member list from the cw4-group contract (via voting module) */
-export async function fetchDaoMembers(votingModuleAddr: string): Promise<MemberListResponse> {
-  // The voting module wraps cw4-group; query the group contract
+export async function fetchDaoMembers(
+  votingModuleAddr: string,
+  startAfter?: string,
+  limit = 20
+): Promise<{ members: Member[]; hasMore: boolean }> {
   const groupAddr = await daoSmartQuery<string>(votingModuleAddr, { group_contract: {} });
-  return daoSmartQuery<MemberListResponse>(groupAddr, { list_members: { limit: 100 } });
+  const query: Record<string, unknown> = { limit: limit + 1 };
+  if (startAfter) query.start_after = startAfter;
+
+  const res = await daoSmartQuery<MemberListResponse>(groupAddr, { list_members: query });
+  const hasMore = res.members.length > limit;
+  return { members: res.members.slice(0, limit), hasMore };
 }
 
 /** Fetch total voting power */
