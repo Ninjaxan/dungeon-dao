@@ -36,14 +36,15 @@ export default async function DaoDetailPage({ params }: PageProps) {
     fetchDaoTreasury(address).catch(() => []),
   ]);
 
-  const [proposals, membersRes, totalPower] = await Promise.all([
+  const [proposalsRes, membersRes, totalPower] = await Promise.all([
     proposalModules.length > 0
-      ? fetchDaoProposals(proposalModules[0].address).catch(() => [])
-      : Promise.resolve([]),
+      ? fetchDaoProposals(proposalModules[0].address).catch(() => ({ proposals: [], hasMore: false }))
+      : Promise.resolve({ proposals: [], hasMore: false }),
     votingModule ? fetchDaoMembers(votingModule).catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
     votingModule ? fetchTotalPower(votingModule).catch(() => ({ power: '0', height: 0 })) : Promise.resolve({ power: '0', height: 0 }),
   ]);
 
+  const proposals = proposalsRes.proposals;
   const members = membersRes.members;
 
   // Overview tab content

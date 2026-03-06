@@ -45,7 +45,8 @@ export default async function ProposalDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const votes = await fetchProposalVotes(proposalModuleAddr, proposalId).catch(() => []);
+  const votesRes = await fetchProposalVotes(proposalModuleAddr, proposalId).catch(() => ({ votes: [], hasMore: false }));
+  const votes = votesRes.votes;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -115,14 +115,23 @@ export async function fetchVotingModule(address: string): Promise<string> {
 // ── Proposals ────────────────────────────────────────────────────────────────
 
 /** Fetch all proposals from a DAO's proposal module */
-export async function fetchDaoProposals(proposalModuleAddr: string): Promise<ProposalSummary[]> {
+export async function fetchDaoProposals(
+  proposalModuleAddr: string,
+  startAfter?: number,
+  limit = 20
+): Promise<{ proposals: ProposalSummary[]; hasMore: boolean }> {
+  const query: Record<string, unknown> = { limit: limit + 1 };
+  if (startAfter !== undefined) query.start_after = startAfter;
+
   const res = await daoSmartQuery<ProposalListResponse>(
     proposalModuleAddr,
-    { list_proposals: { limit: 50 } },
+    { list_proposals: query },
     15
   );
 
-  return res.proposals.map(toProposalSummary);
+  const all = res.proposals.map(toProposalSummary);
+  const hasMore = all.length > limit;
+  return { proposals: all.slice(0, limit), hasMore };
 }
 
 /** Fetch a single proposal by ID */
@@ -146,14 +155,21 @@ export async function fetchProposalConfig(proposalModuleAddr: string): Promise<P
 /** Fetch votes for a proposal */
 export async function fetchProposalVotes(
   proposalModuleAddr: string,
-  proposalId: number
-): Promise<VoteInfo[]> {
+  proposalId: number,
+  startAfter?: string,
+  limit = 20
+): Promise<{ votes: VoteInfo[]; hasMore: boolean }> {
+  const query: Record<string, unknown> = { proposal_id: proposalId, limit: limit + 1 };
+  if (startAfter) query.start_after = { voter: startAfter };
+
   const res = await daoSmartQuery<VoteListResponse>(
     proposalModuleAddr,
-    { list_votes: { proposal_id: proposalId, limit: 100 } },
+    { list_votes: query },
     10
   );
-  return res.votes;
+
+  const hasMore = res.votes.length > limit;
+  return { votes: res.votes.slice(0, limit), hasMore };
 }
 
 /** Fetch a specific voter's vote */
@@ -179,7 +195,7 @@ async function fetchDaoActiveProposalCount(daoAddress: string): Promise<number> 
   const modules = await fetchProposalModules(daoAddress);
   if (modules.length === 0) return 0;
 
-  const proposals = await fetchDaoProposals(modules[0].address);
+  const { proposals } = await fetchDaoProposals(modules[0].address, undefined, 50);
   return proposals.filter((p) => p.status === 'open').length;
 }
 
